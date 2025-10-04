@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Voice Chatbot</title>
+</head>
+<body>
+    <button id="recordButton">Record</button>
+    <p id="responseText"></p>
+    <audio id="responseAudio" controls></audio>
+
+    <script>
+        const recordButton = document.getElementById('recordButton');
+        const responseText = document.getElementById('responseText');
+        const responseAudio = document.getElementById('responseAudio');
+        let mediaRecorder;
+        let audioChunks = [];
+
+        recordButton.addEventListener('click', async () => {
+            if (mediaRecorder && mediaRecorder.state === "recording") {
+                mediaRecorder.stop();
+                recordButton.textContent = 'Record';
+            } else {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = event => {
+                    audioChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                    const formData = new FormData();
+                    formData.append('audio', audioBlob, 'recording.wav');
+
+                    // Call your FastAPI backend
+                    const response = await fetch('http://localhost:8000/chat', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    // If backend returns audio
+                    if (response.headers.get('content-type').includes('audio')) {
+                        const audioData = await response.blob();
+                        const audioUrl = URL.createObjectURL(audioData);
+                        responseAudio.src = audioUrl;
+                        responseAudio.play();
+                        responseText.textContent = '';
+                    } else {
+                        // If backend returns text/JSON
+                        const data = await response.json();
+                        responseText.textContent = data.response || 'No response';
+                        responseAudio.src = '';
+                    }
+                };
+
+                mediaRecorder.start();
+                recordButton.textContent = 'Stop Recording';
+            }
+        });
+    </script>
+</body>
+</html>

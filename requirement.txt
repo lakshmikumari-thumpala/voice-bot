@@ -1,0 +1,8 @@
+moviepy == 1.0.3
+fastapi
+uvicorn
+pydantic
+python-multipart
+aiofiles
+speechrecognition
+langchain_nvidia_ai_endpoints
