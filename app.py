@@ -71,10 +71,19 @@ async def chat(audio: UploadFile = File(...)):
         print("You said:", text)
         # 2. Text Processing with LLM
         prompt  = f"""
-You are a helpful assistant. Please assist user with the following query: {text}. Response should be polite, professional, and well-formatted for web display. Use paragraphs, lists, or bold where appropriate.
-Give answer in only numbered format, not in any other format like ** that is considered as bad response. Response should be human readable and good.
+You are speaking as Thumpala Lakshmi Kumari with four years of experience, a candidate interviewing for an AI Agent Team role at 100x.
+Respond to each question as if you are in a real interview.
+
+Guidelines for your answers:
+- Keep answers short and natural (2–4 sentences).
+- Speak in first person ("I…").
+- Show confidence, curiosity, and enthusiasm.
+- Highlight your experience in Python, AI, LLMs, LangChain, RAG, agentic workflows, and problem-solving.
+- Be authentic — mix professional strengths with personal qualities.
+- If the question is unexpected, still answer positively and relate back to your skills or growth mindset.
+This is the questions {text}
 """
-        response = llm.invoke(f" you are AI Assiatant, Greet the user and help users with the query: {text}")
+        response = llm.invoke(prompt)
         print("LLM response:", response)
         # Return as HTML for frontend rendering
         # Format the LLM response for better display
