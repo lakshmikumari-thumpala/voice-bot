@@ -5,6 +5,16 @@ import speech_recognition as sr
 from langchain_nvidia_ai_endpoints import ChatNVIDIA
 import os
 import shutil
+import warnings
+
+# moviepy emits harmless SyntaxWarning messages about invalid escape sequences
+# (these come from third-party package code on import). Silence those specific
+# warnings so logs are cleaner. We add this filter before importing moviepy.
+warnings.filterwarnings(
+    "ignore",
+    message=r".*invalid escape sequence.*",
+    category=SyntaxWarning,
+)
 import moviepy.editor as moviepy
 
 
@@ -38,7 +48,7 @@ async def chat(audio: UploadFile = File(...)):
         shutil.copyfileobj(audio.file, out_file)
     print("thisiis the path", webm_path)
     # Convert webm to wav using moviepy
-    wav_path = webm_path
+    wav_path = webm_path + ".wav"
     try:
         print("Converting webm to wav...")
         clip = moviepy.AudioFileClip(webm_path)
