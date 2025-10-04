@@ -1,63 +1,183 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Voice Chatbot</title>
+    <style>
+        body {
+            background: linear-gradient(135deg, #e0f7fa 0%, #b3e5fc 40%, #ffffff 100%);
+            /* #e0f7fa (light cyan/sea), #b3e5fc (sky blue), #ffffff (white) */
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background: linear-gradient(135deg, #e3f2fd 0%, #b3e5fc 100%);
+            border-radius: 16px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+            padding: 40px 32px 32px 32px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 320px;
+        }
+        h1 {
+            margin-bottom: 24px;
+            color: #0288d1;
+            background: linear-gradient(90deg, #b3e5fc 0%, #e1f5fe 100%);
+            padding: 10px 24px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(2,136,209,0.08);
+        }
+        #recordButton {
+            background: linear-gradient(90deg, #4fc3f7 0%, #0288d1 100%);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 16px 32px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            margin-bottom: 24px;
+            transition: background 0.2s;
+            box-shadow: 0 2px 8px rgba(2,136,209,0.10);
+        }
+        #recordButton.recording {
+            background: linear-gradient(90deg, #0288d1 0%, #4fc3f7 100%);
+        }
+        #responseText {
+            font-size: 1.1rem;
+            color: #333;
+            min-height: 24px;
+            background: none;
+            border-radius: 0;
+            box-shadow: none;
+            padding: 0;
+            max-width: 100%;
+            text-align: left;
+            margin: 0;
+            display: none;
+        }
+        #responseAudio {
+            width: 100%;
+            margin-top: 8px;
+        }
+        .footer {
+            margin-top: 32px;
+            color: #888;
+            font-size: 0.9rem;
+        }
+        #responseStatus {
+            background: none;
+            border: none;
+            box-shadow: none;
+            padding: 0;
+            margin: 0;
+            text-align: center;
+        }
+    </style>
 </head>
 <body>
-    <button id="recordButton">Record</button>
-    <p id="responseText"></p>
-    <audio id="responseAudio" controls></audio>
-
+    <div class="container">
+        <h1>🎤 Voice Chatbot</h1>
+        <button id="recordButton">Start Recording</button>
+        <div id="responseStatus" style="display:none; margin-top:12px; color:#0288d1; font-size:1.05rem; text-align:center;"></div>
+        <div id="responseText" style="display:none; text-align:center; margin: 40px auto 0 auto; font-size:1.2rem; max-width: 600px;"></div>
+        <audio id="responseAudio" controls style="display:none;"></audio>
+    </div>
+    <div class="footer">Powered by FastAPI &amp; JavaScript</div>
     <script>
         const recordButton = document.getElementById('recordButton');
         const responseText = document.getElementById('responseText');
         const responseAudio = document.getElementById('responseAudio');
+        const responseStatus = document.getElementById('responseStatus');
         let mediaRecorder;
         let audioChunks = [];
+        let isRecording = false;
 
         recordButton.addEventListener('click', async () => {
-            if (mediaRecorder && mediaRecorder.state === "recording") {
+            if (isRecording) {
                 mediaRecorder.stop();
-                recordButton.textContent = 'Record';
+                recordButton.textContent = 'Start Recording';
+                recordButton.classList.remove('recording');
+                isRecording = false;
             } else {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                mediaRecorder = new MediaRecorder(stream);
-                audioChunks = [];
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorder = new MediaRecorder(stream);
+                    audioChunks = [];
 
-                mediaRecorder.ondataavailable = event => {
-                    audioChunks.push(event.data);
-                };
+                    mediaRecorder.ondataavailable = event => {
+                        audioChunks.push(event.data);
+                    };
 
-                mediaRecorder.onstop = async () => {
-                    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-                    const formData = new FormData();
-                    formData.append('audio', audioBlob, 'recording.wav');
-
-                    // Call your FastAPI backend
-                    const response = await fetch('https://voice-bot-1-zwwg.onrender.com/chat', {
-                        method: 'POST',
-                        body: formData
-                    });
-
-                    // If backend returns audio
-                    if (response.headers.get('content-type').includes('audio')) {
-                        const audioData = await response.blob();
-                        const audioUrl = URL.createObjectURL(audioData);
-                        responseAudio.src = audioUrl;
+                    mediaRecorder.onstop = async () => {
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                        // Hide response and status
+                        responseText.style.display = 'none';
+                        responseStatus.style.display = 'block';
+                        responseStatus.textContent = 'Playing your recording...';
+                        // Play back the recorded audio for the user
+                        const recordedAudioUrl = URL.createObjectURL(audioBlob);
+                        responseAudio.src = recordedAudioUrl;
+                        responseAudio.style.display = 'block';
                         responseAudio.play();
-                        responseText.textContent = '';
-                    } else {
-                        // If backend returns text/JSON
-                        const data = await response.json();
-                        responseText.textContent = data.response || 'No response';
-                        responseAudio.src = '';
-                    }
-                };
+                        // Wait for playback to finish before sending to backend
+                        responseAudio.onended = async () => {
+                            responseStatus.textContent = 'Processing...';
+                            responseAudio.style.display = 'none';
+                            responseAudio.src = '';
+                            const formData = new FormData();
+                            formData.append('audio', audioBlob, 'recording.wav');
+                            try {
+                                const response = await fetch('https://voice-bot-1-zwwg.onrender.com/chat', {
+                                    method: 'POST',
+                                    body: formData
+                                });
+                                if (response.headers.get('content-type').includes('audio')) {
+                                    const audioData = await response.blob();
+                                    const audioUrl = URL.createObjectURL(audioData);
+                                    responseAudio.src = audioUrl;
+                                    responseAudio.style.display = 'block';
+                                    responseAudio.play();
+                                    responseStatus.textContent = 'Audio response received!';
+                                    responseText.style.display = 'none';
+                                } else {
+                                    let data;
+                                    try {
+                                        data = await response.json();
+                                        responseText.innerHTML = data.response || 'No response';
+                                    } catch (jsonErr) {
+                                        const rawText = await response.text();
+                                        responseText.textContent = rawText || 'No response';
+                                    }
+                                    responseStatus.style.display = 'none';
+                                    responseText.style.display = 'block';
+                                }
+                            } catch (error) {
+                                responseStatus.textContent = 'Error contacting server.';
+                                responseText.style.display = 'none';
+                            }
+                        };
+                    };
 
-                mediaRecorder.start();
-                recordButton.textContent = 'Stop Recording';
+                    mediaRecorder.start();
+                    recordButton.textContent = 'Stop Recording';
+                    recordButton.classList.add('recording');
+                    isRecording = true;
+                } catch (err) {
+                    responseStatus.textContent = 'Microphone access denied or not available.';
+                    responseStatus.style.display = 'block';
+                    responseText.style.display = 'none';
+                }
             }
         });
     </script>
 </body>
 </html>
+
+
