@@ -32,7 +32,7 @@ app.add_middleware(
 NVIDIA_API_KEY = "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"
  
 # Load a conversational AI model from Hugging Face
-llm = ChatNVIDIA(model="nvidia/llama-3.1-nemotron-70b-instruct", api_key=NVIDIA_API_KEY, temperature=0, top_p=1,seed=42)
+llm = ChatNVIDIA(model="nvidia/llama-3.1-nemotron-70b-instruct", api_key=NVIDIA_API_KEY)
 
 
 @app.post("/chat")
@@ -48,7 +48,10 @@ async def chat(audio: UploadFile = File(...)):
         shutil.copyfileobj(audio.file, out_file)
     print("thisiis the path", webm_path)
     # Convert webm to wav using moviepy
-    wav_path = webm_path + ".wav"
+    if webm_path.endswith(".webm"):
+        wav_path = webm_path + ".wav"
+    else:
+        wav_path = webm_path.rsplit(".", 1)[0] + ".wav"
     try:
         print("Converting webm to wav...")
         clip = moviepy.AudioFileClip(webm_path)
@@ -71,7 +74,7 @@ async def chat(audio: UploadFile = File(...)):
 You are a helpful assistant. Please assist user with the following query: {text}. Response should be polite, professional, and well-formatted for web display. Use paragraphs, lists, or bold where appropriate.
 Give answer in only numbered format, not in any other format like ** that is considered as bad response. Response should be human readable and good.
 """
-        response = llm.invoke(f" you are human give human like human like responses briefly for the query: {text}")
+        response = llm.invoke(f" you are AI Assiatant, Greet the user and help users with the query: {text}")
         print("LLM response:", response)
         # Return as HTML for frontend rendering
         # Format the LLM response for better display
@@ -116,12 +119,39 @@ Give answer in only numbered format, not in any other format like ** that is con
         if in_ul:
             html_lines.append('</ul>')
         html_response = '\n'.join(html_lines)
+        scrollable_html = f"""
+<div id="scrollable-response" style="
+  height: 500px;
+  overflow-y: auto;
+  padding: 20px;
+  box-sizing: border-box;
+  border: 1px solid #ccc;
+  background-color: #fff;
+  scroll-behavior: smooth;
+">
+{html_response}
+</div>
+
+<script>
+  // Ensure scrolling happens *after* content loads
+  window.onload = function() {{
+      setTimeout(function() {{
+          var el = document.getElementById('scrollable-response');
+          if (el) {{
+              el.scrollTop = el.scrollHeight;
+          }}
+      }}, 300); // small delay ensures rendering completes
+  }};
+</script>
+"""
+
+
     except sr.UnknownValueError:
         return JSONResponse(content={"response": "Could not understand audio"}, status_code=400)
     except sr.RequestError as e:
         return JSONResponse(content={"response": f"Could not request results from speech recognition service; {e}"}, status_code=500)
 
-    return {"response": html_response}
+    return {"response": scrollable_html}
 
 if __name__ == "__main__":
     import uvicorn
