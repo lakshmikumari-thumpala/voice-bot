@@ -32,7 +32,7 @@ app.add_middleware(
 NVIDIA_API_KEY = "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"
  
 # Load a conversational AI model from Hugging Face
-llm = ChatNVIDIA(model="nvidia/llama-3.2-nemoretriever-300m-embed-v2", api_key=NVIDIA_API_KEY)
+llm = ChatNVIDIA(model="llama-3.2-nemoretriever-300m-embed-v2", api_key=NVIDIA_API_KEY)
 
 
 @app.post("/chat")
