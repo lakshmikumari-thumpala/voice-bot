@@ -6,3 +6,4 @@ python-multipart
 aiofiles
 speechrecognition
 langchain_nvidia_ai_endpoints
+gTTS == 2.5.4
